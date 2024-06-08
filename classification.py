@@ -10,21 +10,50 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from scipy.sparse import csr_matrix, hstack
 
-class SentimentClassification:
+class TextClassification:
 
-    def __init__(self, df, text_col: str, spam_label_col: str):
+    def __init__(self, df: pd.DataFrame, text_col: str):
 
+        self.df = df
+        self.text_col = text_col
+
+        print('Sample Size', len(df))
+
+    def encode_positive_rating(self, rating_col_name: str):
+
+        # Drop missing values
+        self.df.dropna(inplace=True)
+
+        # Remove any 'neutral' ratings equal to 3
+        self.df = self.df[self.df[rating_col_name] != 3]
+
+        # Encode any rating above 3 to be 'positive' 
+        # Encode any rating below 3 to be 'negative' 
+        self.df['Positively Rated'] = np.where(self.df['Rating'] > 3, 1, 0)
+
+        return self.df 
+    
+    def spliting_train_testing_binary_class(self, sample_df, encoded_label_col: str): 
         # Validation: spam_label_col needs to be encoded as 0 or 1, where 1 is a spam 
-        if not all(label in [0, 1] for label in df[spam_label_col]):
-            raise ValueError("All values in spam_label_col must be either 0 or 1.")
+        if not all(label in [0, 1] for label in sample_df[encoded_label_col]):
+            raise ValueError("All values in encoded_label_col must be either 0 or 1.")
         
         # Spliting training and testing data 
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(df[text_col],  df[spam_label_col], random_state=0)
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(sample_df[self.text_col],  sample_df[encoded_label_col], random_state=0)
 
-        # Spam and Non-spam data 
-        self.spam = df[df[spam_label_col] == 1]
-        self.nonspam = df[df[spam_label_col] == 0]
+        # Segmentation based on binary classification 
+        self.class_1 = sample_df[sample_df[encoded_label_col] == 1]
+        self.class_0 = sample_df[sample_df[encoded_label_col] == 0]
 
+        # Calculate percentage
+        class_1_pct = len(self.class_1) / len(sample_df)
+        class_0_pct = len(self.class_0) / len(sample_df)
+
+        print(f'Sample size of Class 1 data: {len(self.class_1)}; Percentage: {class_1_pct:.2%}\n' 
+              f'Sample size of Class 0 data: {len(self.class_0)}; Percentage: {class_0_pct:.2%}') 
+        
+        return self.class_1, self.class_0
+   
 
     # Feature Engineering 
 
@@ -45,15 +74,15 @@ class SentimentClassification:
     def calculate_avg_nonword_char(self, name_of_text_col: str):
         
          #Count non-word characters 
-        nonword_in_spam_count = self.spam[name_of_text_col].str.count(r'\W')
-        nonword_in_nonspam_count = self.nonspam[name_of_text_col].str.count(r'\W')
+        nonword_in_spam_count = self.class_1[name_of_text_col].str.count(r'\W')
+        nonword_in_nonspam_count = self.class_0[name_of_text_col].str.count(r'\W')
 
-        print('Average number of non-word characters in spam data',  nonword_in_spam_count.mean(), 
-            '\nAverage number of non-word characters in non-spam data', nonword_in_nonspam_count.mean())
+        print('Average number of non-word characters in class 1 data',  nonword_in_spam_count.mean(), 
+            '\nAverage number of non-word characters in class 0 data', nonword_in_nonspam_count.mean())
         
         # Non-word extracion 
-        nonword_in_spam = self.spam[name_of_text_col].apply(self.extract_nonword_char)
-        nonword_in_nonspam = self.nonspam[name_of_text_col].apply(self.extract_nonword_char)
+        nonword_in_spam = self.class_1[name_of_text_col].apply(self.extract_nonword_char)
+        nonword_in_nonspam = self.class_0[name_of_text_col].apply(self.extract_nonword_char)
 
         # Convert to DataFrame
         nonword_in_spam_df = pd.DataFrame({'nonword_char': nonword_in_spam})
