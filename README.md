@@ -1,5 +1,13 @@
-# nlp_sentiment_classification
-Includes classification models trained with count vector or TF-IDF vector, using AUC as evaluation metric
+# nlp_classification
+
+This repository demonstrates how to leverage classification models in Natural Language Processing (NLP) for two prevalent Machine Learning (ML) applications: 
+* Sentiment Classificaiton
+* Spam Detection 
+
+
+## Sample Data Sets 
+- Sentiment analysis: User review data, where we encode any rating above 3 to be "positively rated". 
+- Spam detection: raw text with 'spam' / 'nonspam' labels. 
 
 ## sentiment_classification Module
 
@@ -17,6 +25,7 @@ Evaluating 5 different combinations of models & features:
         * Document length
         * Number of digits per document
         * Number of non-word characters 
+
 
 ### Measurement
 AUC (Area Under the Curve)
