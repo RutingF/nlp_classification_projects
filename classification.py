@@ -90,6 +90,15 @@ class TextClassification:
         
         return nonword_in_spam_df, nonword_in_nonspam_df
 
+    # Count Vectorizer 
+
+    # Helper: Count Vectorizer with feature names as output 
+    def get_feature_names_from_CountVectorizer(self):
+        vect = CountVectorizer().fit(self.X_train)
+        feature_names = vect.get_feature_names_out()
+        print('Number of features:', len(feature_names) ) 
+        return feature_names
+
 
     # Count Vectorizer with multinomial Naive Bayes classifier model
 
@@ -124,6 +133,7 @@ class TextClassification:
             '\nLargest coefficients:', largest_coefs)
         
         return None
+    
 
     # TFI-DF 
 
@@ -208,44 +218,25 @@ class TextClassification:
     
 
 # Logistic Regression 
+    
+    def logistic_regressions_count_vect(self):
 
-    def logistic_regression_Tfidf_ngrams(self):
+        vect = CountVectorizer()
+        # transform the documents in the training data to a document-term matrix
+        X_train_vectorized = vect.fit_transform(self.X_train)    
 
-        """
-        Tfidf Vectorizer: document frequency < 5 and word N-grams from n=1 to n=3 (unigrams, bigrams, and trigrams).
-        Additional Features: 
-        1. the length of document (number of characters)
-        2. number of digits per document
+        # Train the model
+        model = LogisticRegression()
+        model.fit(X_train_vectorized, self.y_train)
 
-        fit a Logistic Regression model with regularization `C=100` and `max_iter=1000`
-        """ 
-
-        vect = TfidfVectorizer(min_df=5, ngram_range=(1,3)).fit(self.X_train)
-        X_train_vectorized = vect.transform(self.X_train)
-                            
-        #Add the length of documents as an additional feature
-        X_train_with_length = self.add_feature(X_train_vectorized, [len(doc) for doc in self.X_train])
-        
-        #Add the number of digits per document as additional feature
-        digits_per_doc = [text.count(r'\d') for text in self.X_train]
-        X_train_with_features = self.add_feature(X_train_with_length, digits_per_doc)
-        
-        model = LogisticRegression(C=100, max_iter=1000)
-        model.fit(X_train_with_features, self.y_train)
-        
-        # Same processing for test data 
-        X_test_vectorized = vect.transform(self.X_test)
-        X_test_with_length = self.add_feature(X_test_vectorized, [len(doc) for doc in self.X_test])
-        digits_per_doc_test = [text.count(r'\d') for text in self.X_test]
-        X_test_with_features = self.add_feature(X_test_with_length, digits_per_doc_test)
-        
-        #Evaluation
-        predictions = model.predict_proba(X_test_with_features)
-
+        # Predict the transformed test documents
+        predictions = model.predict_proba(vect.transform(self.X_test))
         auc_score = roc_auc_score(self.y_test, predictions[:,1])
 
-        print('AUC, Logistic Regression w/ Tfidf and document length + num of digits per document as additional features', auc_score)
-        
+        print('AUC, Logistic Regressions using Count Vectorizer', auc_score)
+
+        self.return_coef(vect, model)
+
         return None 
 
     
@@ -288,3 +279,62 @@ class TextClassification:
             '\nFeatures added - 1) length of document 2) num of digits per document 3) num of non-word characters')
 
         return vect, model 
+    
+
+    def logistic_regression_Tfidf(self):
+
+        # Fit the TfidfVectorizer to the training data specifiying a minimum document frequency of 5
+        vect = TfidfVectorizer(min_df=5).fit(self.X_train)
+        print('Number of features:', len(vect.get_feature_names_out()) ) 
+
+        X_train_vectorized = vect.transform(self.X_train)
+
+        model = LogisticRegression()
+        model.fit(X_train_vectorized, self.y_train)
+
+        predictions = model.predict_proba(vect.transform(self.X_test))
+        auc_score = roc_auc_score(self.y_test, predictions[:,1])
+
+        print('AUC, Logistic Regressions w/TF-IDF Vectorizer', auc_score)
+              
+        return None 
+        
+    
+    def logistic_regression_Tfidf_ngrams(self):
+
+        """
+        Tfidf Vectorizer: document frequency < 5 and word N-grams from n=1 to n=3 (unigrams, bigrams, and trigrams).
+        Additional Features: 
+        1. the length of document (number of characters)
+        2. number of digits per document
+
+        fit a Logistic Regression model with regularization `C=100` and `max_iter=1000`
+        """ 
+
+        vect = TfidfVectorizer(min_df=5, ngram_range=(1,3)).fit(self.X_train)
+        X_train_vectorized = vect.transform(self.X_train)
+                            
+        #Add the length of documents as an additional feature
+        X_train_with_length = self.add_feature(X_train_vectorized, [len(doc) for doc in self.X_train])
+        
+        #Add the number of digits per document as additional feature
+        digits_per_doc = [text.count(r'\d') for text in self.X_train]
+        X_train_with_features = self.add_feature(X_train_with_length, digits_per_doc)
+        
+        model = LogisticRegression(C=100, max_iter=1000)
+        model.fit(X_train_with_features, self.y_train)
+        
+        # Same processing for test data 
+        X_test_vectorized = vect.transform(self.X_test)
+        X_test_with_length = self.add_feature(X_test_vectorized, [len(doc) for doc in self.X_test])
+        digits_per_doc_test = [text.count(r'\d') for text in self.X_test]
+        X_test_with_features = self.add_feature(X_test_with_length, digits_per_doc_test)
+        
+        #Evaluation
+        predictions = model.predict_proba(X_test_with_features)
+
+        auc_score = roc_auc_score(self.y_test, predictions[:,1])
+
+        print('AUC, Logistic Regression w/ Tfidf and document length + num of digits per document as additional features', auc_score)
+        
+        return None 
